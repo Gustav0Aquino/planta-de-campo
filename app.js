@@ -7,7 +7,7 @@
      O "share" só termina depois que o SharePoint confirma o arquivo inteiro: a planta só marca
      "enviado" quando chegou de verdade. Sem sinal, espera o sinal voltar com a planta aberta.
    Os arquivos são os mesmos que o líder mandava pelo compartilhar: os importadores não mudam. */
-var VERSAO = "0.1.3";
+var VERSAO = "0.1.4";
 var CLIENTE = "be9bf767-d1a4-4735-adec-cf4aacc40391";
 var LOCATARIO = "8999042a-e592-47e6-a75e-58f8901c3645";
 var SITE_ID = "montaggiotech.sharepoint.com,b0667df5-71a6-4efd-a8b1-b02d9192ccb1,4d2f1e7c-b7be-4cf5-b3b0-12cb70c6febd";
@@ -247,7 +247,11 @@ function partida(){
     var u = ler("ultima", null), o = (m.obras || []).filter(function(x){ return x.id === u; })[0];
     if(o && !/obras/.test(location.hash)) abrirObra(o); else mostrarObras(m);
   }).catch(function(e){
-    mensagem("Não deu para ler a lista de obras", "Precisa de sinal na primeira vez. Detalhe: " + (e.message || e), partida);
+    /* 404: a lista não existe (ainda não publicada); 403: a conta do líder não tem acesso ao site Montagem */
+    var txt = e.status === 404 ? "A lista de obras ainda não foi publicada para este modo (" + MODO + "). Avise o Gustavo."
+      : e.status === 403 ? "A sua conta ainda não tem acesso às pastas das obras no SharePoint. Avise o Gustavo: ele pede a liberação."
+      : "Precisa de sinal na primeira vez.";
+    mensagem("Não deu para ler a lista de obras", txt + "<br><small>Detalhe: " + String(e.message || e).replace(/</g, "&lt;") + "</small>", partida);
   });
 }
 pca.initialize().then(function(){ return pca.handleRedirectPromise(); }).then(partida).catch(function(e){
