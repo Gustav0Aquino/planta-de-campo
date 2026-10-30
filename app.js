@@ -7,7 +7,7 @@
      O "share" só termina depois que o SharePoint confirma o arquivo inteiro: a planta só marca
      "enviado" quando chegou de verdade. Sem sinal, espera o sinal voltar com a planta aberta.
    Os arquivos são os mesmos que o líder mandava pelo compartilhar: os importadores não mudam. */
-var VERSAO = "0.1.5";
+var VERSAO = "0.1.6";
 var CLIENTE = "be9bf767-d1a4-4735-adec-cf4aacc40391";
 var LOCATARIO = "8999042a-e592-47e6-a75e-58f8901c3645";
 var SITE_ID = "montaggiotech.sharepoint.com,b0667df5-71a6-4efd-a8b1-b02d9192ccb1,4d2f1e7c-b7be-4cf5-b3b0-12cb70c6febd";

@@ -1,7 +1,7 @@
 /* Guarda a casca para o app abrir sem sinal. Rede primeiro: com sinal, uma versão nova
    publicada já vale na próxima abertura; sem sinal, usa a última guardada.
    A planta de cada obra é guardada pelo app.js (cache "plantas"), não aqui. */
-var CASCA = "casca-0.1.5";
+var CASCA = "casca-0.1.6";
 var ARQUIVOS = ["./", "index.html", "app.js", "manifest.webmanifest", "icone-192.png", "icone-512.png", "vendor/msal-browser-4.28.1.min.js"];
 self.addEventListener("install", function(e){
   e.waitUntil(caches.open(CASCA).then(function(c){ return c.addAll(ARQUIVOS); }).then(function(){ return self.skipWaiting(); }));
