@@ -7,7 +7,7 @@
      O "share" só termina depois que o SharePoint confirma o arquivo inteiro: a planta só marca
      "enviado" quando chegou de verdade. Sem sinal, espera o sinal voltar com a planta aberta.
    Os arquivos são os mesmos que o líder mandava pelo compartilhar: os importadores não mudam. */
-var VERSAO = "0.1.4";
+var VERSAO = "0.1.5";
 var CLIENTE = "be9bf767-d1a4-4735-adec-cf4aacc40391";
 var LOCATARIO = "8999042a-e592-47e6-a75e-58f8901c3645";
 var SITE_ID = "montaggiotech.sharepoint.com,b0667df5-71a6-4efd-a8b1-b02d9192ccb1,4d2f1e7c-b7be-4cf5-b3b0-12cb70c6febd";
@@ -23,7 +23,7 @@ function registro(t){ var l = ler("registro", []); l.push(new Date().toISOString
 function hora(d){ return new Date(d).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); }
 function mb(b){ return (b / 1048576).toFixed(1).replace(".", ","); }
 function espera(ms){ return new Promise(function(ok){ setTimeout(ok, ms); }); }
-function tela(id){ ["t-entrar", "t-obras", "t-msg"].forEach(function(t){ $(t).hidden = t !== id; }); $("planta").hidden = !!id; }
+function tela(id){ ["t-entrar", "t-obras", "t-msg"].forEach(function(t){ $(t).hidden = t !== id; }); $("planta").hidden = $("faixa-obra").hidden = !!id; }
 function mensagem(tit, txt, tentar){
   tela("t-msg"); $("msg-tit").textContent = tit; $("msg-txt").innerHTML = txt || "";
   $("msg-bt").hidden = !tentar; $("msg-bt").onclick = tentar || null;
@@ -96,9 +96,10 @@ function mostrarObras(m){
   var c = conta(); $("quem").textContent = c ? "Conectado como " + c.name + " (" + c.username + ")" : "";
   $("lista-obras").innerHTML = "";
   (m.obras || []).forEach(function(o){
-    var b = document.createElement("button"); b.className = "obra";
+    var b = document.createElement("button"), atual = o.id === ler("ultima", null);
+    b.className = "obra" + (atual ? " atual" : "");
     b.innerHTML = "<span></span><small></small>";
-    b.firstChild.textContent = o.nome; b.lastChild.textContent = (o.lider ? "Líder: " + o.lider + " · " : "") + (o.periodo || "");
+    b.firstChild.textContent = o.nome; b.lastChild.textContent = (o.lider ? "Líder: " + o.lider + " · " : "") + (o.periodo || "") + (atual ? " · aberta por último" : "");
     b.onclick = function(){ gravar("ultima", o.id); abrirObra(o); };
     $("lista-obras").appendChild(b);
   });
@@ -138,6 +139,7 @@ function abrirObra(o){
     if(!html){ mensagem("Não deu para abrir a planta", "Este aparelho ainda não tem a planta guardada e não conseguiu baixar. Precisa de sinal na primeira vez.", function(){ abrirObra(o); }); return; }
     var i = html.search(/<head[^>]*>/i), fim = i < 0 ? 0 : i + html.match(/<head[^>]*>/i)[0].length;
     tela(null); document.title = o.nome + " · Planta de Campo";
+    $("faixa-nome").textContent = (MODO === "teste" ? "TESTE · " : "") + o.nome.replace(/^TESTE · /, "");
     $("planta").srcdoc = html.slice(0, fim) + INJETAR + html.slice(fim);
     registro("abriu " + o.id);
   });
@@ -214,6 +216,7 @@ window.PlantaOnline = {
   versao: VERSAO,
   enviar: function(arqs){
     var o = OBRA, desistir = { agora: false };
+    ENVIANDO++;
     var p = FILA.then(function(){
       if(!o) throw new Error("obra não definida");
       return sinal().then(function(){
@@ -233,12 +236,19 @@ window.PlantaOnline = {
       var x = new Error(e.message || String(e)); x.name = "EnvioSharePoint"; throw x;
     });
     FILA = p.catch(function(){});
+    FILA.then(function(){ ENVIANDO--; });
     return p;
   }
 };
 
 /* ------------------------------------------------ partida */
 $("b-entrar").onclick = function(){ pca.loginRedirect({ scopes: ESCOPOS }); };
+/* trocar de obra: a planta aberta já guardou tudo no aparelho; só não troca no meio de um envio */
+var ENVIANDO = 0;
+$("b-trocar").onclick = function(){
+  if(ENVIANDO){ aviso("Espere o envio terminar para trocar de obra.", "erro"); avisoSome(4000); return; }
+  carregarObras().then(mostrarObras).catch(function(){ var m = ler("obras:" + MODO, null); if(m) mostrarObras(m); });
+};
 $("b-sair").onclick = function(){ pca.logoutRedirect({ account: conta(), postLogoutRedirectUri: BASE }); };
 function partida(){
   if(!conta()){ tela("t-entrar"); return; }
