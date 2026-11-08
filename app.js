@@ -7,7 +7,7 @@
      O "share" só termina depois que o SharePoint confirma o arquivo inteiro: a planta só marca
      "enviado" quando chegou de verdade. Sem sinal, espera o sinal voltar com a planta aberta.
    Os arquivos são os mesmos que o líder mandava pelo compartilhar: os importadores não mudam. */
-var VERSAO = "0.1.6";
+var VERSAO = "0.2";
 var CLIENTE = "be9bf767-d1a4-4735-adec-cf4aacc40391";
 var LOCATARIO = "8999042a-e592-47e6-a75e-58f8901c3645";
 var SITE_ID = "montaggiotech.sharepoint.com,b0667df5-71a6-4efd-a8b1-b02d9192ccb1,4d2f1e7c-b7be-4cf5-b3b0-12cb70c6febd";
@@ -20,6 +20,8 @@ var $ = function(id){ return document.getElementById(id); };
 function ler(k, padrao){ try{ var v = localStorage.getItem("online:" + k); return v == null ? padrao : JSON.parse(v); }catch(e){ return padrao; } }
 function gravar(k, v){ try{ localStorage.setItem("online:" + k, JSON.stringify(v)); }catch(e){} }
 function registro(t){ var l = ler("registro", []); l.push(new Date().toISOString() + " " + t); if(l.length > 80) l = l.slice(-80); gravar("registro", l); }
+/* 0.2 (C19): texto que vem de fora (erro da Microsoft, nome de arquivo) entra no aviso como texto, nunca como HTML */
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
 function hora(d){ return new Date(d).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); }
 function mb(b){ return (b / 1048576).toFixed(1).replace(".", ","); }
 function espera(ms){ return new Promise(function(ok){ setTimeout(ok, ms); }); }
@@ -88,7 +90,13 @@ function baixarTexto(p){
 
 /* ------------------------------------------------ obras */
 function carregarObras(){
-  return baixarTexto(MANIFESTOS[MODO]).then(function(r){ var m = JSON.parse(r.texto); gravar("obras:" + MODO, m); return m; })
+  /* 0.2 (05/11, laboratório B8d): uma lista sem obras (arquivo salvo pela metade, "{}", modelo errado) NÃO
+     substitui a lista boa guardada; sem isso o líder perdia a obra até sem sinal. BOM do Bloco de Notas é ignorado. */
+  return baixarTexto(MANIFESTOS[MODO]).then(function(r){
+    var m = JSON.parse(String(r.texto).replace(/^﻿/, ""));
+    var ok = m && Array.isArray(m.obras) && m.obras.length && m.obras.every(function(o){ return o && o.id && o.planta && o.envios; });
+    if(!ok) throw new Error("lista de obras sem obras ou com obra incompleta (id, planta, envios)");
+    gravar("obras:" + MODO, m); return m; })
     .catch(function(e){ var m = ler("obras:" + MODO, null); registro("lista de obras: " + e.message); if(m) return m; throw e; });
 }
 function mostrarObras(m){
@@ -129,10 +137,25 @@ var INJETAR = '<script>(function(){var P=parent.PlantaOnline;window.PLANTA_ONLIN
   /* frases das plantas que mandam conferir no OneDrive: no modo online quem confere é o app */
   + 'var T=[[/ ?Confira no OneDrive → Envios se o arquivo está lá\\./g,""],[/ — confira na pasta Envios do OneDrive/g," — chegou no SharePoint"]];'
   + 'function lim(no){var w=document.createTreeWalker(no,4),t;while(t=w.nextNode()){var v=t.nodeValue,x=v;for(var j=0;j<T.length;j++)x=x.replace(T[j][0],T[j][1]);if(x!==v)t.nodeValue=x;}}'
-  + 'lim(document.body);new MutationObserver(function(ms){for(var k=0;k<ms.length;k++)lim(ms[k].target);}).observe(document.body,{childList:true,subtree:true,characterData:true});});'
+  /* 0.2 (C29): textos da AJUDA trocados pela casca; com espera de 300 ms para não pesar em planta grande */
+  + 'var aj=null;function ajus(){clearTimeout(aj);aj=setTimeout(function(){try{P.ajustarTextos(document);}catch(e){}},300);}'
+  + 'lim(document.body);try{P.ajustarTextos(document);}catch(e){}'
+  + 'new MutationObserver(function(ms){for(var k=0;k<ms.length;k++)lim(ms[k].target);ajus();}).observe(document.body,{childList:true,subtree:true,characterData:true});});'
   + '})();<\/script><style>#env-passos .passo,#env-passos label.campo,#env-corpo ol{display:none!important}</style>';
 var OBRA = null;
+/* 0.2: faixa com o envio do dia. Só sabe o que ESTE aparelho enviou (hora guardada quando o SharePoint confirmou).
+   Sem sinal tem prioridade; o relógio de 1 min faz a virada do dia sozinho. */
+function faixaEnvio(){
+  var el = $("faixa-envio"); if(!OBRA){ el.textContent = ""; el.className = ""; return; }
+  var u = ler("ultimoEnvio:" + OBRA.id, null);
+  if(!navigator.onLine){ el.className = "sem"; el.textContent = "Sem sinal"; }
+  else if(u && new Date(u).toDateString() === new Date().toDateString()){ el.className = "ok"; el.textContent = "Enviado hoje " + hora(u); }
+  else { el.className = "nada"; el.textContent = "Nada enviado hoje"; }
+}
+window.addEventListener("online", faixaEnvio); window.addEventListener("offline", faixaEnvio);
+setInterval(faixaEnvio, 60000);
 function abrirObra(o){
+  if(ENVIANDO && OBRA && OBRA.id !== o.id){ aviso("Espere o envio terminar para trocar de obra.", "erro"); avisoSome(4000); return; }
   OBRA = o;
   mensagem("Abrindo " + o.nome + "…", navigator.onLine ? "Baixando a planta da pasta da obra." : "Sem sinal: abrindo a última planta guardada.");
   buscarPlanta(o).then(function(html){
@@ -140,6 +163,7 @@ function abrirObra(o){
     var i = html.search(/<head[^>]*>/i), fim = i < 0 ? 0 : i + html.match(/<head[^>]*>/i)[0].length;
     tela(null); document.title = o.nome + " · Planta de Campo";
     $("faixa-nome").textContent = (MODO === "teste" ? "TESTE · " : "") + o.nome.replace(/^TESTE · /, "");
+    faixaEnvio();
     $("planta").srcdoc = html.slice(0, fim) + INJETAR + html.slice(fim);
     registro("abriu " + o.id);
   });
@@ -158,20 +182,57 @@ var avisoTimer = null;
 function avisoSome(ms){ clearTimeout(avisoTimer); avisoTimer = setTimeout(function(){ aviso(null); }, ms); }
 function sinal(){
   if(navigator.onLine) return Promise.resolve();
-  aviso("<b>Sem sinal agora.</b> O envio sai sozinho quando o sinal voltar. Deixe a planta aberta. Nada foi perdido.", "erro");
+  /* 0.2 (C09): sem prometer "nada foi perdido"; o que é verdade é que a planta continua guardada no aparelho */
+  aviso("<b>Sem sinal agora.</b> O envio sai sozinho quando o sinal voltar. Deixe a planta aberta: o que você marcou continua guardado neste aparelho.", "erro");
   return new Promise(function(ok){ window.addEventListener("online", function f(){ window.removeEventListener("online", f); ok(); }); });
 }
+/* 0.2 (D12c): conteúdo do arquivo que já está na Envios, para comparar com o que o aparelho quer mandar */
+function baixarBytes(p){
+  var d0;
+  return drive().then(function(d){ d0 = d; return graph("/drives/" + d + "/root:/" + rel(p)); }).then(function(it){
+    var u = it["@microsoft.graph.downloadUrl"];
+    var r = u ? fetch(u) : token().then(function(tk){ return fetch("https://graph.microsoft.com/v1.0/drives/" + d0 + "/items/" + it.id + "/content", { headers: { Authorization: "Bearer " + tk } }); });
+    return r.then(function(x){ if(!x.ok) throw new Error("download " + x.status); return x.arrayBuffer(); });
+  });
+}
+function igual(a, b){
+  if(a.byteLength !== b.byteLength) return false;
+  var x = new Uint8Array(a), y = new Uint8Array(b);
+  for(var i = 0; i < x.length; i++) if(x[i] !== y[i]) return false;
+  return true;
+}
+/* PASTA/NOME.txt -> PASTA/NOME-2.txt (o começo do nome não muda: os importadores procuram pelo prefixo) */
+function outroNome(p, n){
+  var i = p.lastIndexOf("."), barra = p.lastIndexOf("/");
+  return (i > barra ? p.slice(0, i) + "-" + n + p.slice(i) : p + "-" + n);
+}
 function enviarArquivo(f, destino, desistir){
-  var total = f.size, url = null, tentativa = 0;
+  var total = f.size, url = null, tentativa = 0, original = destino, nTentNome = 1;
   function sessao(){
     return drive().then(function(d){
       return graph("/drives/" + d + "/root:/" + rel(destino) + ":/createUploadSession",
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item: { "@microsoft.graph.conflictBehavior": "fail" } }) });
     }).then(function(j){ url = j.uploadUrl; });
   }
-  /* já existe com o mesmo nome: se o tamanho bate, é o mesmo envio que chegou antes (toque repetido) */
-  function jaExiste(){ return drive().then(function(d){ return graph("/drives/" + d + "/root:/" + rel(destino) + "?$select=size"); })
-    .then(function(it){ if(it.size === total) return { size: it.size, repetido: true }; throw new Error("já existe um arquivo com esse nome e outro tamanho"); }); }
+  /* já existe com o mesmo nome. 0.2 (05/11, laboratório D12c): tamanho igual não prova que é o mesmo arquivo.
+     Compara o conteúdo: igual = toque repetido (já chegou); diferente = envia com outro nome (-2, -3...),
+     sem sobrescrever o que está lá e sem dizer "chegou" para um arquivo que não subiu. */
+  function jaExiste(){
+    return baixarBytes(destino).then(function(lá){
+      return f.arrayBuffer().then(function(aqui){
+        if(igual(lá, aqui)) return { size: total, repetido: true };
+        nTentNome++;
+        if(nTentNome > 9) throw new Error("já existem arquivos com esse nome e outro conteúdo");
+        var novo = outroNome(original, nTentNome);
+        registro("envio " + f.name + ": já existe outro arquivo com o mesmo nome; enviando como " + novo.split("/").pop());
+        destino = novo; url = null;
+        return sessao().then(function(){ return pedaco(0); }, function(e){
+          if(e.status === 409 || e.codigo === "nameAlreadyExists") return jaExiste();
+          throw e;
+        });
+      });
+    });
+  }
   function pedaco(ini){
     var fim = Math.min(ini + PEDACO, total);
     aviso("Enviando <b>" + f.name.replace(/</g, "&lt;") + "</b><br>" + mb(ini) + " de " + mb(total) + " MB", "", null, total ? ini / total : 0);
@@ -212,8 +273,31 @@ function enviarArquivo(f, destino, desistir){
   });
 }
 var FILA = Promise.resolve();
+/* 0.2 (C29): na AJUDA das plantas, o que só vale para a planta por arquivo (abrir pelo Chrome/OneDrive,
+   atalho da Envios, escolher a pasta no ENVIAR, RECUPERAR do arquivo enviado) vira o texto do online.
+   O plano B (Downloads + WhatsApp como Documento) continua: é o que vale quando o envio falha.
+   Roda pela casca sobre o documento da planta: o HTML da obra não muda. */
+var TEXTOS_ONLINE = [
+  { el: "div", re: /^\s*ANTES DO 1º DIA/, html: "<b>No app online:</b> entre com a sua conta Montaggio e escolha a obra. O <b>ENVIAR</b> grava direto na pasta Envios da obra e só mostra ✓ depois que o SharePoint confirmou." },
+  { el: "li", re: /^\s*A planta abriu em branco/, esconder: true },
+  { el: "li", re: /^\s*O ENVIAR deu erro:/, html: "<b>O ENVIAR deu erro:</b> a planta tenta salvar um arquivo em <b>Downloads</b>. Confira se ele apareceu lá e mande ao Gustavo pelo WhatsApp <b>como Documento</b>. Tire print do erro." },
+  { el: "li", re: /^\s*A planta abriu vazia:/, html: "<b>A planta abriu vazia:</b> não marque nada de novo. Avise o Gustavo: ele devolve a planta a partir do seu último envio." },
+  { el: "li", re: /^\s*Fim do dia: ENVIAR → OneDrive/, html: "Fim do dia: <b>ENVIAR</b>. O arquivo vai direto para a pasta Envios da obra. Sem foto também envia." },
+  { el: "ol", re: /role para baixo.*OneDrive/, esconder: true }
+];
+function ajustarTextos(doc){
+  TEXTOS_ONLINE.forEach(function(r){
+    var l = doc.querySelectorAll(r.el + ":not([data-online])");
+    for(var i = 0; i < l.length; i++){
+      if(!r.re.test(l[i].textContent)) continue;
+      l[i].setAttribute("data-online", "1");
+      if(r.esconder) l[i].style.display = "none"; else l[i].innerHTML = r.html;
+    }
+  });
+}
 window.PlantaOnline = {
   versao: VERSAO,
+  ajustarTextos: ajustarTextos,
   enviar: function(arqs){
     var o = OBRA, desistir = { agora: false };
     ENVIANDO++;
@@ -229,9 +313,10 @@ window.PlantaOnline = {
       registro("enviado " + arqs.map(function(f){ return f.name; }).join(", ") + (l.some(function(x){ return x.repetido; }) ? " (já estava lá)" : ""));
       aviso("✓ <b>Chegou no SharePoint</b> às " + hora(new Date()) + "<br>" + arqs.length + " arquivo(s), " + mb(b) + " MB, na pasta Envios de " + o.nome.replace(/</g, "&lt;") + ".", "ok");
       avisoSome(9000);
+      gravar("ultimoEnvio:" + o.id, new Date().toISOString()); faixaEnvio();
     }, function(e){
       registro("falhou: " + (e.message || e));
-      aviso("<b>Não chegou no SharePoint.</b> " + (e.message || e) + "<br>A planta vai salvar o arquivo em Downloads; nada foi perdido.", "erro",
+      aviso("<b>Não chegou no SharePoint.</b> " + esc(e.message || e) + "<br>A planta vai tentar salvar o arquivo em <b>Downloads</b>. Confira se ele apareceu lá e mande ao Gustavo pelo WhatsApp <b>como Documento</b>. Não apareceu? Não apague nada e ligue para o Gustavo.", "erro",
         [{ txt: "OK", fn: function(){ aviso(null); } }]);
       var x = new Error(e.message || String(e)); x.name = "EnvioSharePoint"; throw x;
     });
@@ -245,9 +330,12 @@ window.PlantaOnline = {
 $("b-entrar").onclick = function(){ pca.loginRedirect({ scopes: ESCOPOS }); };
 /* trocar de obra: a planta aberta já guardou tudo no aparelho; só não troca no meio de um envio */
 var ENVIANDO = 0;
+/* 0.2 (C05): a planta some da tela no mesmo toque (não dá para começar um envio enquanto a lista carrega);
+   e abrirObra confere de novo antes de trocar a planta */
 $("b-trocar").onclick = function(){
   if(ENVIANDO){ aviso("Espere o envio terminar para trocar de obra.", "erro"); avisoSome(4000); return; }
-  carregarObras().then(mostrarObras).catch(function(){ var m = ler("obras:" + MODO, null); if(m) mostrarObras(m); });
+  mensagem("Carregando as obras…", "");
+  carregarObras().then(mostrarObras).catch(function(){ var m = ler("obras:" + MODO, null); if(m) mostrarObras(m); else if(OBRA) abrirObra(OBRA); });
 };
 $("b-sair").onclick = function(){ pca.logoutRedirect({ account: conta(), postLogoutRedirectUri: BASE }); };
 function partida(){
@@ -264,8 +352,24 @@ function partida(){
     mensagem("Não deu para ler a lista de obras", txt + "<br><small>Detalhe: " + String(e.message || e).replace(/</g, "&lt;") + "</small>", partida);
   });
 }
+/* 0.2 (C13): pede ao navegador para não apagar a planta e as fotos quando o aparelho fica sem espaço,
+   e avisa se o espaço está acabando. O Chrome pode negar o pedido; isso não protege contra "limpar dados". */
+function protegerArmazenamento(){
+  var s = navigator.storage; if(!s || !s.persist) return;
+  s.persisted().then(function(p){ return p || s.persist(); }).then(function(p){
+    registro("armazenamento protegido: " + (p ? "sim" : "não"));
+    return s.estimate ? s.estimate() : null;
+  }).then(function(e){
+    if(!e || !e.quota) return;
+    var livre = e.quota - (e.usage || 0);
+    registro("espaço: usado " + mb(e.usage || 0) + " MB de " + mb(e.quota) + " MB");
+    if(livre < 300 * 1048576 || (e.usage || 0) / e.quota > 0.85)
+      aviso("<b>Pouco espaço livre neste aparelho</b> (" + mb(livre) + " MB). Envie o que está pendente e avise o Gustavo antes de tirar mais fotos.", "erro", [{ txt: "OK", fn: function(){ aviso(null); } }]);
+  }).catch(function(e){ registro("armazenamento: " + (e.message || e)); });
+}
+protegerArmazenamento();
 pca.initialize().then(function(){ return pca.handleRedirectPromise(); }).then(partida).catch(function(e){
   registro("login: " + (e.errorCode || "") + " " + (e.message || e));
-  tela("t-entrar"); aviso("O login não terminou: " + (e.errorMessage || e.message || e), "erro", [{ txt: "OK", fn: function(){ aviso(null); } }]);
+  tela("t-entrar"); aviso("O login não terminou: " + esc(e.errorMessage || e.message || e), "erro", [{ txt: "OK", fn: function(){ aviso(null); } }]);
 });
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function(e){ registro("sw: " + e.message); });

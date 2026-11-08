@@ -24,6 +24,11 @@ h1{font-size:26px;margin:10px 0 4px}
 #faixa-obra[hidden]{display:none}
 #faixa-obra span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #faixa-obra button{height:26px;border:1px solid #2f6099;border-radius:13px;background:#14324f;color:#e8eef5;font:700 12.5px system-ui;padding:0 12px;white-space:nowrap}
+/* 0.2: estado do envio do dia, na mesma faixa (não aumenta a altura) */
+#faixa-envio{flex:none;white-space:nowrap;font:700 12px system-ui;padding:3px 9px;border-radius:11px}
+#faixa-envio.ok{background:#164a2a;color:#9be3b4}
+#faixa-envio.nada{background:#5a3d0a;color:#ffd27a}
+#faixa-envio.sem{background:#5c1c16;color:#ffb3aa}
 #planta{position:fixed;left:0;right:0;bottom:0;top:calc(34px + env(safe-area-inset-top,0px));width:100%;height:calc(100% - 34px - env(safe-area-inset-top,0px));border:0;background:#fff}
 .obra.atual{border-color:#4cc277}
 #aviso{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 10px);transform:translateX(-50%);z-index:10;width:min(94vw,520px);
@@ -55,9 +60,9 @@ h1{font-size:26px;margin:10px 0 4px}
   <p class="sub" id="msg-txt"></p>
   <button class="bt sec" id="msg-bt" hidden>Tentar de novo</button>
 </section>
-<div id="faixa-obra" hidden><span id="faixa-nome"></span><button id="b-trocar">Trocar obra</button></div>
+<div id="faixa-obra" hidden><span id="faixa-nome"></span><b id="faixa-envio"></b><button id="b-trocar">Trocar obra</button></div>
 <iframe id="planta" hidden title="Planta"></iframe>
 <div id="aviso" hidden></div>
 <script src="vendor/msal-browser-4.28.1.min.js"></script>
-<script src="app.js?v=0.1.6"></script>
+<script src="app.js?v=0.2"></script>
 </body></html>
