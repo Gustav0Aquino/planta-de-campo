@@ -7,62 +7,168 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icone-192.png">
 <style>
+/* 18/11 (Gustavo): volta ao azul da Montaggio da 0.2. Lista de obras como na 0.2; perfil do líder numa aba ao lado. */
+:root{color-scheme:dark;--fundo:#0f2238;--cartao:#14324f;--borda:#2f6099;--texto:#e8eef5;--apoio:#aab8c6;--topo:#0b1a2b;--verde:#1a8a3c;--azul2:#2a4a6e}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:#0f2238;color:#e8eef5;font:16px/1.45 system-ui,Arial,sans-serif}
-.tela{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px;text-align:center}
 [hidden]{display:none!important}
+html,body{margin:0;min-height:100%;background:var(--fundo);color:var(--texto);font:16px/1.45 system-ui,Arial,sans-serif}
+button{font:inherit}
+button:not(:disabled){cursor:pointer}
+button:focus-visible{outline:3px solid #7fb6ff;outline-offset:3px}
+.tela{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px;text-align:center}
 h1{font-size:26px;margin:10px 0 4px}
-.sub{color:#aab8c6;margin:0 0 22px;max-width:420px}
-.bt{display:block;width:100%;max-width:420px;min-height:58px;border:0;border-radius:12px;font:800 18px system-ui;color:#fff;background:#1a8a3c;margin:8px 0}
-.bt.sec{background:#2a4a6e}
-.obra{display:block;width:100%;max-width:520px;text-align:left;background:#14324f;border:1px solid #2f6099;border-radius:12px;padding:14px 16px;margin:8px 0;color:#e8eef5;font:600 17px system-ui}
-.obra small{display:block;color:#aab8c6;font-weight:400;font-size:14px;margin-top:3px}
+.sub{color:var(--apoio);margin:0 0 22px;max-width:420px}
+.bt{display:block;width:100%;max-width:420px;min-height:58px;border:0;border-radius:12px;font:800 18px system-ui;color:#fff;background:var(--verde);margin:8px 0}
+.bt.sec{background:var(--azul2)}
 .miudo{color:#7f93a8;font-size:13px;margin-top:18px}
-/* faixa da casca acima da planta: nome da obra + trocar de obra (não fica por cima de nada da planta) */
-#faixa-obra{position:fixed;left:0;right:0;top:0;height:calc(34px + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) 8px 0 12px;
-  display:flex;align-items:center;gap:10px;background:#0b1a2b;color:#cfe0f0;font:600 13px system-ui;z-index:5}
-#faixa-obra[hidden]{display:none}
-#faixa-obra span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#faixa-obra button{height:26px;border:1px solid #2f6099;border-radius:13px;background:#14324f;color:#e8eef5;font:700 12.5px system-ui;padding:0 12px;white-space:nowrap}
-/* 0.2: estado do envio do dia, na mesma faixa (não aumenta a altura) */
-#faixa-envio{flex:none;white-space:nowrap;font:700 12px system-ui;padding:3px 9px;border-radius:11px}
+/* lista de obras (igual à 0.2) */
+#t-obras{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 32px;text-align:center}
+#quem{color:var(--apoio);margin:0 0 18px;overflow-wrap:anywhere}
+#lista-obras,#lista-perfil{width:100%;max-width:520px;display:flex;flex-direction:column;align-items:stretch}
+.obra{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:3px 12px;width:100%;text-align:left;background:var(--cartao);border:1px solid var(--borda);border-radius:12px;padding:14px 16px;margin:8px 0 0;color:var(--texto);font:600 17px system-ui}
+.obra-nome{overflow-wrap:anywhere}
+.obra small{grid-column:1;display:block;color:var(--apoio);font-weight:400;font-size:14px;overflow-wrap:anywhere}
+.obra-acao{grid-column:2;grid-row:1 / span 2;padding:6px 10px;border-radius:8px;background:var(--verde);color:#fff;font-size:13px;font-weight:800;white-space:nowrap}
+.obra.outra .obra-acao,.obra.hist .obra-acao{background:var(--azul2);color:#cfe0f0}
+.obra.atual{border-color:#4cc277}
+.obra.estatica{opacity:.9}
+.grupo{margin:22px 0 2px;font-size:15px;font-weight:800;color:#cfe0f0;text-align:left;text-transform:uppercase;letter-spacing:.04em}
+.vazio{margin:8px 0 0;padding:12px 14px;border:1px dashed var(--borda);border-radius:12px;color:var(--apoio);text-align:left;font-size:15px}
+.link{align-self:flex-start;min-height:40px;padding:4px 6px;border:0;background:transparent;color:#9cc7f5;font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+#b-sair{max-width:420px;margin-top:22px}
+/* aba "Minhas obras" na lateral */
+#b-perfil{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:16px 9px;border:1px solid var(--borda);border-right:0;border-radius:12px 0 0 12px;background:#1b3f66;color:#fff;font:800 15px system-ui;box-shadow:-3px 0 12px rgba(0,0,0,.3)}
+#b-perfil span{writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:.03em}
+#b-perfil b{min-width:22px;padding:1px 6px;border-radius:11px;background:var(--verde);font-size:13px}
+#b-perfil b:empty{display:none}
+#fundo-perfil{position:fixed;inset:0;z-index:7;background:rgba(0,0,0,.45)}
+#painel-perfil{position:fixed;top:0;right:0;bottom:0;z-index:8;width:min(440px,92vw);overflow-y:auto;background:var(--fundo);border-left:1px solid var(--borda);
+  padding:calc(14px + env(safe-area-inset-top,0px)) 16px 24px;box-shadow:-8px 0 24px rgba(0,0,0,.4);text-align:left}
+#painel-perfil header{display:flex;align-items:center;gap:10px}
+#painel-perfil h1{flex:1;margin:0;font-size:22px}
+#b-fechar-perfil{min-height:44px;border:1px solid var(--borda);border-radius:10px;background:var(--cartao);color:var(--texto);font-weight:700;padding:0 14px}
+#painel-perfil .quem2{color:var(--apoio);margin:4px 0 0;font-size:14px}
+/* tela da obra: faixa em cima, planta embaixo */
+#campo{position:fixed;inset:0;display:flex;flex-direction:column;background:#fff}
+#faixa-obra{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:calc(5px + env(safe-area-inset-top,0px)) 8px 5px 12px;background:var(--topo);color:#cfe0f0;font:600 13px system-ui}
+#faixa-nome{flex:1;min-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#faixa-envio{flex:0 1 auto;min-width:0;font:700 12.5px system-ui;padding:4px 10px;border-radius:11px;overflow-wrap:anywhere}
+#faixa-envio:empty{display:none}
 #faixa-envio.ok{background:#164a2a;color:#9be3b4}
 #faixa-envio.nada{background:#5a3d0a;color:#ffd27a}
 #faixa-envio.sem{background:#5c1c16;color:#ffb3aa}
-#planta{position:fixed;left:0;right:0;bottom:0;top:calc(34px + env(safe-area-inset-top,0px));width:100%;height:calc(100% - 34px - env(safe-area-inset-top,0px));border:0;background:#fff}
-.obra.atual{border-color:#4cc277}
+#faixa-envio.azul{background:#173d66;color:#a9d1ff}
+#faixa-envio.consulta{background:#1d3550;color:#e8eef5;border:1px solid var(--borda)}
+#faixa-obra button{height:30px;border:1px solid var(--borda);border-radius:15px;background:var(--cartao);color:var(--texto);font:700 12.5px system-ui;padding:0 12px;white-space:nowrap}
+#planta{flex:1;min-height:0;width:100%;border:0;background:#fff}
 #aviso{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 10px);transform:translateX(-50%);z-index:10;width:min(94vw,520px);
-  background:#0f2742;color:#fff;border:2px solid #2f6099;border-radius:12px;padding:12px 14px;font-size:15px;box-shadow:0 6px 24px rgba(0,0,0,.35)}
-#aviso[hidden]{display:none}
-#aviso.ok{border-color:#1a8a3c}#aviso.erro{border-color:#d84a3a}
+  background:#0f2742;color:#fff;border:2px solid var(--borda);border-radius:12px;padding:12px 14px;font-size:15px;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+#aviso.ok{border-color:var(--verde)}#aviso.erro{border-color:#d84a3a}
 #aviso .barra{height:8px;background:#23415f;border-radius:4px;margin-top:8px;overflow:hidden}
 #aviso .barra i{display:block;height:100%;background:#4cc277;width:0}
-#aviso button{margin-top:10px;min-height:44px;border:0;border-radius:9px;padding:0 14px;font:700 15px system-ui;background:#2a4a6e;color:#fff}
-#aviso button.g{background:#1a8a3c}
+#aviso button{margin-top:10px;min-height:44px;border:0;border-radius:9px;padding:0 14px;font:700 15px system-ui;background:var(--azul2);color:#fff}
+#aviso button.g{background:var(--verde)}
+/* galeria de fotos sincronizadas (consulta e histórico) */
+#b-fotos{background:#1a8a3c!important;border-color:#4cc277!important}
+#galeria{position:fixed;inset:0;z-index:12;overflow-y:auto;background:var(--fundo);padding:calc(10px + env(safe-area-inset-top,0px)) 14px 24px;text-align:left}
+#galeria header{position:sticky;top:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 0 10px;background:var(--fundo)}
+#gal-tit{flex:1;min-width:180px;margin:0;font-size:20px;overflow-wrap:anywhere}
+#galeria header button{min-height:44px;border:1px solid var(--borda);border-radius:10px;background:var(--cartao);color:var(--texto);font-weight:700;padding:0 14px}
+#gal-sinc{background:#1a8a3c!important;border-color:#4cc277!important}
+#gal-info{margin:0 0 8px;color:var(--apoio);font-size:14px;white-space:pre-line}
+#gal-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+#gal-grade h3{grid-column:1/-1;margin:12px 0 0;font-size:15px;color:#cfe0f0}
+#gal-grade figure{margin:0;background:var(--cartao);border:1px solid var(--borda);border-radius:10px;overflow:hidden;cursor:pointer}
+#gal-grade img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#0b1a2b}
+#gal-grade figcaption{padding:5px 8px;font-size:12.5px;color:var(--apoio)}
+#gal-grade .vazio{grid-column:1/-1}
+#foto-grande{position:fixed;inset:0;z-index:13;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:rgba(0,0,0,.92);padding:12px}
+#foto-grande img{max-width:100%;max-height:88vh;object-fit:contain}
+#foto-grande p{margin:0;color:#e8eef5;font-size:14px}
+/* ver como (teste) e painel de líderes (ADM) */
+.ver-como{display:flex;align-items:center;gap:8px;justify-content:flex-start;margin:4px 0 6px;font-size:15px;color:#cfe0f0}
+#ver-como{min-height:40px;border-radius:9px;border:1px solid var(--borda);background:var(--cartao);color:var(--texto);padding:0 10px;font:600 15px system-ui}
+.lider-bloco{margin:10px 0;padding:10px 12px;border:1px solid var(--borda);border-radius:12px;background:#11294a}
+.lider-bloco h3{margin:0 0 6px;font-size:16px}
+.lider-obra{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #23415f}
+.lider-obra span{flex:1;min-width:0}.lider-obra b{display:block;font-size:14.5px}.lider-obra small{color:var(--apoio);font-size:13px}
+button.mini{min-height:36px;border:1px solid #b8741a;border-radius:8px;background:transparent;color:#ffd27a;font-weight:700;padding:0 10px}
+#form-hist{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.6)}
+#form-hist .caixa{width:min(520px,100%);background:#0f2742;border:2px solid var(--borda);border-radius:14px;padding:18px;text-align:left}
+#form-hist label{display:block;margin:10px 0 4px;color:#cfe0f0;font-size:14px}
+#form-hist select,#form-hist input{width:100%;min-height:44px;border-radius:9px;border:1px solid var(--borda);background:var(--cartao);color:var(--texto);padding:0 10px;font:15px system-ui}
+#form-hist .bts{display:flex;gap:12px;margin-top:16px}#form-hist .bts button{flex:1;min-height:50px;border-radius:10px;font:800 16px system-ui;border:1px solid var(--borda);background:var(--azul2);color:#fff}
+#fh-salvar{background:var(--verde)!important}
+/* aviso de arquivamento da planta no aparelho */
+.arquivo-aviso{margin:8px 0 0;padding:12px 14px;border:2px solid #d9a441;border-radius:12px;background:#2a2410;text-align:left}
+.arquivo-aviso p{margin:0 0 8px}.arquivo-aviso small{color:#e9d6a8}
+.arquivo-aviso .bts{display:flex;gap:10px}.arquivo-aviso button{flex:1;min-height:46px;border-radius:10px;border:1px solid var(--borda);background:var(--azul2);color:#fff;font:800 15px system-ui}
+.arquivo-aviso button.g{background:var(--verde)}
+/* confirmação dupla (Agora sou o líder) */
+#confirma{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.6)}
+#confirma .caixa{width:min(520px,100%);background:#0f2742;border:2px solid #d9a441;border-radius:14px;padding:18px 18px 14px;text-align:left;color:var(--texto)}
+#conf-tit{margin:0 0 8px;font-size:21px}
+#conf-txt{margin:0;white-space:pre-line;color:#cfe0f0;font-size:16px}
+#conf-bts{display:flex;justify-content:space-between;gap:12px;margin-top:18px}
+#conf-bts button{flex:1;min-height:54px;border-radius:10px;font:800 16px system-ui;border:1px solid var(--borda)}
+.conf-nao{background:var(--azul2);color:#fff}
+.conf-sim{background:#b8741a;color:#fff;border-color:#d9a441!important}
+.conf-sim:disabled{opacity:.45}
 </style>
 </head><body>
 <section class="tela" id="t-entrar" hidden>
   <img src="icone-192.png" width="84" height="84" alt="">
   <h1>Planta de Campo</h1>
-  <p class="sub">Entre com a sua conta Montaggio. É uma vez só: depois o app abre direto na sua obra, com ou sem sinal.</p>
+  <p class="sub">Use sua conta Montaggio para acessar as obras.</p>
   <button class="bt" id="b-entrar">Entrar com a conta Montaggio</button>
   <div class="miudo" id="versao"></div>
 </section>
-<section class="tela" id="t-obras" hidden>
+<section id="t-obras" hidden>
+  <img src="icone-192.png" width="64" height="64" alt="">
   <h1>Escolha a obra</h1>
-  <p class="sub" id="quem"></p>
-  <div id="lista-obras" style="width:100%;display:flex;flex-direction:column;align-items:center"></div>
-  <button class="bt sec" id="b-sair" style="margin-top:22px">Sair desta conta</button>
+  <p id="quem"></p>
+  <div id="lista-obras"></div>
+  <button class="bt sec" id="b-sair">Sair desta conta</button>
   <div class="miudo" id="versao2"></div>
+  <button id="b-perfil" type="button" aria-controls="painel-perfil" aria-expanded="false"><b></b><span>Minhas obras</span></button>
 </section>
+<div id="fundo-perfil" hidden></div>
+<aside id="painel-perfil" hidden aria-label="Minhas obras">
+  <header><h1>Minhas obras</h1><button id="b-fechar-perfil" type="button">Fechar</button></header>
+  <p class="quem2">As obras em que você está agora e as que já terminaram.</p>
+  <div id="lista-perfil"></div>
+</aside>
 <section class="tela" id="t-msg" hidden>
   <h1 id="msg-tit">Carregando…</h1>
   <p class="sub" id="msg-txt"></p>
   <button class="bt sec" id="msg-bt" hidden>Tentar de novo</button>
 </section>
-<div id="faixa-obra" hidden><span id="faixa-nome"></span><b id="faixa-envio"></b><button id="b-trocar">Trocar obra</button></div>
-<iframe id="planta" hidden title="Planta"></iframe>
-<div id="aviso" hidden></div>
+<div id="campo" hidden>
+  <header id="faixa-obra" hidden>
+    <span id="faixa-nome"></span>
+    <b id="faixa-envio" role="status" aria-atomic="true"></b>
+    <button id="b-fotos" type="button" hidden>Sincronizar fotos</button>
+    <button id="b-trocar">Voltar às obras</button>
+  </header>
+  <iframe id="planta" hidden title="Planta"></iframe>
+</div>
+<div id="aviso" role="status" hidden></div>
+<section id="galeria" hidden aria-label="Fotos da obra">
+  <header><h2 id="gal-tit">Fotos</h2><button id="gal-todas" type="button" hidden>Ver todas</button><button id="gal-sinc" type="button">Sincronizar de novo</button><button id="gal-fechar" type="button">Fechar</button></header>
+  <p id="gal-info"></p>
+  <div id="gal-grade"></div>
+</section>
+<div id="foto-grande" hidden><img id="foto-grande-img" alt=""><p id="foto-grande-txt"></p></div>
+<div id="form-hist" hidden role="dialog" aria-modal="true" aria-labelledby="fh-tit"><div class="caixa">
+  <h2 id="fh-tit" style="margin:0 0 6px;font-size:20px"></h2>
+  <label for="fh-obra">Obra</label><select id="fh-obra"></select>
+  <label for="fh-de">De (opcional)</label><input id="fh-de" type="date">
+  <label for="fh-ate">Até (opcional)</label><input id="fh-ate" type="date">
+  <div class="bts"><button id="fh-cancelar" type="button">Cancelar</button><button id="fh-salvar" type="button">Salvar</button></div>
+</div></div>
+<div id="confirma" hidden role="dialog" aria-modal="true" aria-labelledby="conf-tit"><div class="caixa"><h2 id="conf-tit"></h2><p id="conf-txt"></p><div id="conf-bts"></div></div></div>
 <script src="vendor/msal-browser-4.28.1.min.js"></script>
-<script src="app.js?v=0.2"></script>
+<script src="nucleo.js?v=0.3"></script>
+<script src="app.js?v=0.3"></script>
 </body></html>

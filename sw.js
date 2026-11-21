@@ -1,8 +1,8 @@
 /* Guarda a casca para o app abrir sem sinal. Rede primeiro: com sinal, uma versão nova
    publicada já vale na próxima abertura; sem sinal, usa a última guardada.
    A planta de cada obra é guardada pelo app.js (cache "plantas"), não aqui. */
-var CASCA = "casca-0.2";
-var ARQUIVOS = ["./", "index.html", "app.js", "manifest.webmanifest", "icone-192.png", "icone-512.png", "vendor/msal-browser-4.28.1.min.js"];
+var CASCA = "casca-0.3";
+var ARQUIVOS = ["./", "index.html", "app.js", "nucleo.js", "manifest.webmanifest", "icone-192.png", "icone-512.png", "vendor/msal-browser-4.28.1.min.js"];
 self.addEventListener("install", function(e){
   e.waitUntil(caches.open(CASCA).then(function(c){ return c.addAll(ARQUIVOS); }).then(function(){ return self.skipWaiting(); }));
 });
@@ -23,7 +23,7 @@ self.addEventListener("fetch", function(e){
        em todos os caches deixava achar o app.js de outra versão e misturar (achado do Codex, caso sem trocar CASCA). */
     return caches.open(CASCA).then(function(c){
       return c.match(e.request).then(function(r){ return r || c.match(e.request, { ignoreSearch: true }); })
-        .then(function(r){ return r || c.match("index.html"); });
+        .then(function(r){ return r || (e.request.mode === "navigate" ? c.match("index.html") : Response.error()); });
     });
   }));
 });
